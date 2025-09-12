@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CS 180 Project 1: Images of the Russian Empire -- Colorizing the Prokudin-Gorskii Photo Collection</title>
+  <link rel="stylesheet" href="../style.css" />
+  <!-- Optional: Google Fonts for Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ====== Navbar ====== -->
+  <nav class="container">
+    <ul>
+      <li><a href="../index.html">Return to Home</a></li>
+      <!-- <li><a href="#projects">Projects</a></li>
+      <li><a href="#contact">Contact</a></li> -->
+    </ul>
+  </nav>
+
+  <!-- ====== Hero Section ====== -->
+  <header>
+    <div>
+      <h1>CS 180 Project 1: Images of the Russian Empire -- Colorizing the Prokudin-Gorskii Photo Collection</h1>
+      <p>In this project, we colorize images from the Prokudin-Gorskii Photo Collection by programmatically aligning the images captured with different colored filters.</p>
+      <!--<a href="#projects" class="btn">See My Work</a> -->
+    </div>
+  </header>
+
+  <section class="container">
+    <h2>Project Description</h2>
+    <p>In this project, we examine images captured from the Prokudin-Gorskii Photo Collection, which feature black-and-white photographs captured using three different colored filters (blue, green, and red). As a result of these filters, the photos can be stacked in their respective color channels to produce color photos of the pre-color era! However, despite the photographer's best efforts, the resulting color frames are not perfectly aligned, leading to significant translational differences between the channel images. As a result, we must programmatically align the visual frames so that our color images can appear in their full-color form once again.
+    </p>
+<!--     
+    <p><it>Note: Despite my use of the royal "we", all parts of this page refer exclusively to my own work and findings.</it></p> -->
+  </section>
+  <section class="container">
+    <h2>Method</h2>
+    <p>In order to achieve our desired alignment, we employ series of operations to restore our scenes to their former glory:
+    <ol>
+      <li>To begin, our images initially appear as a series of the three colored frames appended vertically to one another in a single-channel image. As a result, we slice the image into three even slices, which gives us the respective channels.</li>
+      <li>Next, we generate an image pyramid for each of our colored channels, which consist of separate versions of the frames scaled to differing levels of resolution. In order to produce this downscaling, we repeatedly downsize the image by a factor of two, in which each remaining pixel is the average of its right, bottom, and bottom-right neighbors (this averaging ensures that we do not lose information about the downsampled pixels, producing a "smoother" compressed result). This processing step is optional in the case of smaller images (see "Small Images"), and repeats until the smallest version is produced with at least one axis under 100 pixels (hyperparameter).</li>
+      <li>From here, we can begin the process of aligning our image. For baseline functionality, we pre-process both the target image (blue channel) and incoming image (green or red) by eliminating borders at a fixed 15% image width (hyperparameter) from all sides. For additional functionality, we optionally convolve both images with a simple edge filter (shape and values can be tuned), which can improve performance on a small adversarial set of examples (see "Limitation" for the case from our test set).</li>
+      <li>With our images pre-processed, we now scan through a range of possible shifts along the horizontal and vertical axes, evaluating the similarity between frames under each shift. In our implementation, we use NCC as our similarity metric of choice, as it demonstrates greater success rates than Least Squares similarity across the board. After scanning through all shifts in the range, the shift amounts with the maximum similarity score (and the corresponding images) are recorded. While the precise range of scanning is a hyperparameter, our implementation uses a range of [-15, +15] for each axis on the initial image and a smaller range ([-3, +3] or [-1, +1]) on each of the successive images. Iterations that use convolutional edge processing appear more capable of supporting small shift amounts than the corresponding versions without.</li>
+      <li>Once an alignment for a smaller pair of images in the image pyramid has been produced, it is used to warm-start alignment of the next-largest pair in the pyramid. This is done by passing the existing shift parameters (scaled up by a factor of 2) as a "center" from which the next phase of alignment begins. This repeats until the original scale images are aligned.</li>
+      <li>With our final alignments derived, we save the final aligned RGB image (by stacking the corresponding channels) to a file and print out the corresponding shifts that produced the image. Please see all of our image results below.</li>
+    </ol>
+    </p>
+  </section>
+
+  <!-- ====== Assignment Parts ======
+  <section class="container">
+    <h2>Part 1: Selfie: The Wrong Way vs. The Right Way</h2>
+    <p>
+      A selfie ... but maybe not the regular kind.
+    </p>
+    <p style="text-align: center;"><img src="./media/face_normal.jpeg" width="30%">
+    <img src="./media/face_zoomed.jpeg" width="30%"></p>
+    
+  </section>
+
+  <section class="container">
+    <h2>Part 2: Architectural Perspective Compression</h2>
+    <p>
+      Zooming in on the cherry trees on the west side of campus.
+    </p>
+    <p style="text-align: center;"><img src="./media/path_normal.jpeg" width="45%">
+    <img src="./media/path_zoomed.jpeg" width="45%"></p>
+  </section>
+  <section class="container">
+    <h2>Part 3: The Dolly Zoom</h2>
+    <p>
+      Recreating "Vertigo shot" effect, with a fossilized co-star.
+    </p>
+    <p style="text-align: center;"><img src="./media/dolly_zoom.gif" width="70%">
+    </p>
+  </section> -->
+
+  <section id="comparisons" class="container">
+  <h2>Small Images</h2>
+  <p>Please note that shift amounts are denoted as (x, y)</p>
+  
+  <div class="comparison-grid">
+
+    <!-- Example Pair -->
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-cathedral.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (2, 5), Red Shift (3, 12)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-cathedral.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (2, 3), Red Shift (3, 11)</p>
+      </div>
+    </div>
+    
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-monastery.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (2, -3), Red Shift (2, 3)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-monastery.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (2, -3), Red Shift (2, 3)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-tobolsk.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (3, 3), Red Shift (3, 6)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-tobolsk.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (3, 3), Red Shift (3, 6)</p>
+      </div>
+    </div>
+
+    <!-- Add more pairs as needed -->
+
+  </div>
+  <h2>Large Images</h2>
+  
+  <div class="comparison-grid">
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-church.jpeg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (4, 25), Red Shift (-4, 58)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-church.jpeg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (4, 25), Red Shift (-4, 58)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-harvesters.jpeg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (17, 60), Red Shift (14, 124)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-harvesters.jpeg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (17, 59), Red Shift (13, 123)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-icon.jpeg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (16, 40), Red Shift (23, 89)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-icon.jpeg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (17, 41), Red Shift (23, 89)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-italil.jpeg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (22, 38), Red Shift (36, 77)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-italil.jpeg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (21, 31), Red Shift (35, 76)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-lastochikino.jpeg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (-1, -3), Red Shift (-8, 75)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-lastochikino.jpeg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (-2, -2), Red Shift (-7, 63)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-lugano.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (-17, 41), Red Shift: (-29, 92)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-lugano.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (-16, 41), Red Shift: (-29, 92)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-melons.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (10, 80), Red Shift: (14, 177)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-melons.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (10, 81), Red Shift: (13, 178)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-self_portrait.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (29, 77), Red Shift: (37, 175)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-self_portrait.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (29, 78), Red Shift: (37, 176)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-siren.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (-6, 49), Red Shift: (-24, 96)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-siren.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (-6, 49), Red Shift: (-24, 96)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-three_generations.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (12, 54), Red Shift: (9, 111)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-three_generations.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (13, 52), Red Shift: (11, 111)</p>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>Custom Images from the Database</h2>
+  
+  <div class="comparison-grid">
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-statues.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (12, 55), Red Shift: (3, 126)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-statues.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (12, 54), Red Shift: (4, 125)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-railroad.jpg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (-14, 34), Red Shift: (-26, 121)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-railroad.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (-14, 34), Red Shift: (-25, 121)</p>
+      </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-boat.jpeg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift: (23, 31), Red Shift: (37, 112)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-boat.jpg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift: (22, 30), Red Shift: (35, 111)</p>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>Limitation</h2>
+  In the particular case of the Emir, the red channel image varied dramatically from its blue and green counterparts, particular on the large portion of the center image that makes up his clothing. As a result, NCC similarity alone on the color channel images does a poor job of aligning the red channel. However, if we use edge processing, then the effect of channel color largely disappears and we are able to find a much more satisfactory alignment.
+  
+  <div class="comparison-grid">
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/full/aligned-emir.jpeg" alt="Fully Aligned Image">
+        <p>With Edge Processing: Green Shift (23, 49), Red Shift (41, 106)</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/base/aligned-emir.jpeg" alt="Ablation Image">
+        <p>Without Edge Processing: Green Shift (24, 49), Red Shift (-862, 1)</p>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>Edge Processing</h2>
+  As a quick bonus, here are a couple visualizations of the edge processing results on a couple of our images.
+  
+  <div class="comparison-grid">
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="assets/monastery_edge.png" alt="Fully Aligned Image">
+        <p>Edge Result for Monastery Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="assets/tobolsk_edge.png" alt="Ablation Image">
+        <p>Edge Result for Tobolsk Image</p>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+  <!-- ====== Footer ====== -->
+<!--   <footer>
+    <p>© 2025 Jaimyn Drake. Built with ❤️ and lots of robotics coffee.</p>
+  </footer> -->
+
+</body>
+</html>
+<!-- ====== Boilerplate provided by ChatGPT ====== -->
