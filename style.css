@@ -87,6 +87,9 @@ section h2 {
   border-left: 4px solid #4dd0e1;
   padding-left: 1rem;
 }
+section h3 {
+  font-size: 1.5rem;
+}
 
 /* ====== Project Cards ====== */
 .projects {

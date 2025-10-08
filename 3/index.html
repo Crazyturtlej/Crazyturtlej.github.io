@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CS 180 Project 2: Fun with Filters and Frequencies!</title>
+  <link rel="stylesheet" href="../style.css" />
+  <!-- Optional: Google Fonts for Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+ <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+</head>
+<body>
+
+  <!-- ====== Navbar ====== -->
+  <nav class="container">
+    <ul>
+      <li><a href="../index.html">Return to Home</a></li>
+      <!-- <li><a href="#projects">Projects</a></li>
+      <li><a href="#contact">Contact</a></li> -->
+    </ul>
+  </nav>
+
+  <!-- ====== Hero Section ====== -->
+  <header>
+    <div>
+      <h1>CS 180 Project 3: (Auto)Stitching and Photo Mosaics</h1>
+      <p>In this project, we use homographic transformations and image blending techniques to stitch images into photo mosaics (i.e. panoramas).</p>
+      <!--<a href="#projects" class="btn">See My Work</a> -->
+    </div>
+  </header>
+
+  <!-- ====== Assignment Parts ====== -->
+  <section class="container">
+    <h2>Part A</h2>
+    <section class="container">
+      <h3>Part A.1: Shoot the Pictures</h2>
+      <p>In order to create image mosaics, we first need the images to stitch together! Here are the photos I captured, including the nighttime view outside of my window, tiled mosaic next to the Social Sciences Building, and the Berkeley Rose Garden:</p>
+      <p style="text-align: center;"><img src="./assets/windowview3.jpg" width="30%"> <img src="./assets/windowview2.jpg" width="30%">  <img src="./assets/windowview1.jpg" width="30%"></p>
+      <p style="text-align: center;"><img src="./assets/tunnel_3.jpg" width="30%"> <img src="./assets/tunnel_2.jpg" width="30%">  <img src="./assets/tunnel_1.jpg" width="30%"></p>
+      <p style="text-align: center;"><img src="./assets/Rosegarden1_resized.jpg" width="22.5%"> <img src="./assets/Rosegarden2_resized.jpg" width="22.5%">  <img src="./assets/Rosegarden3_resized.jpg" width="22.5%"> <img src="./assets/Rosegarden4_resized.jpg" width="22.5%"></p>
+    </section>
+     <section class="container">
+      <h3>Part A.2: Recover Homographies</h2>
+      <p>Next, we need to be able to compute the relative homographies between two images we want to align. To begin, we must register a sufficient number of corresponding points between both images (in this case we use 8). This is currently done by hand, but will be performed programmatically in Part 2 of the project. Here are the selected correspondences for one of the image pairs:</p>
+      <p style="text-align: center;"><img src="./assets/points1.jpg" width="45%"> <img src="./assets/points2.jpg" width="45%"></p>
+      <br>
+      <p>With these point values, the matrix-vector system of equations is given by \( Ax = b \), where</p>
+      <p style="text-align: center;">\( A = \begin{bmatrix} 335.896104 & 122.746753 & 1 & 0 & 0 & 0 & -33787.0039 & -12346.8090 \\ 
+        0 & 0 & 0 & 335.896104 & 122.746753 & 1 & -32014.8248 & -11699.2003 \\ 
+        577.535714 & 274.694805 & 1 & 0 & 0 & 0 & -214102.615 & -101834.180 \\
+        0 & 0 & 0 &  577.535714 & 274.694805 & 1 & -157427.235 & -74877.5229 \\
+        858.217532 & 125.912338 & 1 & 0 & 0 & 0 & -544552.956 & -79893.4223 \\
+        0 & 0 & 0 & 858.217532 & 125.912338 & 1 & -125266.323 & -18378.2956 \\
+        744.256494 & 514.224026 & 1 & 0 & 0 & 0 & -399206.618 & -275821.086 \\
+        0 & 0 & 0 & 744.256494 & 514.224026 & 1 & -377217.221 & -260628.103 \\
+        733.704545 & 542.714286 & 1 & 0 & 0 & 0 & -385804.719 & -285376.087 \\
+        0 & 0 & 0 & 733.704545 & 542.714286 & 1 & -391998.329 & -289957.442 \\
+        596.529221 & 496.285714 & 1 & 0 & 0 & 0 & -234991.841 & -195502.734 \\
+        0 & 0 & 0 & 596.529221 & 496.285714 & 1 & -297307.839 & -247346.866 \\
+        631.350649 & 649.288961 & 1 & 0 & 0 & 0 & -271359.839 & -279069.876 \\
+        0 & 0 & 0 & 631.350649 & 649.288961 & 1 & -409262.809 & -420891.029 \\
+        570.149351 & 521.610390 & 1 & 0 & 0 & 0 & -207754.649 & -190067.713 \\
+        0 & 0 & 0 & 570.149351 & 521.610390 & 1 & -299200.681 & -273728.600
+   \end{bmatrix}, x = \begin{bmatrix} h_1 \\ h_2 \\ h_3 \\ h_4 \\ h_5 \\ h_6 \\ h_7 \\ h_8 \\ \end{bmatrix}, b = \begin{bmatrix}
+100.58766234 \\
+95.31168831 \\
+370.71753247 \\
+272.58441558 \\
+634.51623377 \\
+145.96103896 \\
+536.38311688 \\
+506.83766234 \\
+525.83116883 \\
+534.27272727 \\
+393.93181818 \\
+498.39610390 \\
+429.80844156 \\
+648.23376623 \\
+364.38636364 \\
+524.77597403
+\end{bmatrix}\) </p>
+      <br>
+      <p>Once the system is solved using Least Squares, the resulting homographic transformation matrix between the two images is given by:</p>
+      <p style="text-align: center;">\( H = \begin{bmatrix}
+h_1 & h_2 & h_3 \\
+h_4 & h_5 & h_6 \\
+h_7 & h_8 & 1
+\end{bmatrix} = \begin{bmatrix}
+1.47139008 & -0.00504424883 & -378.805692 \\
+0.169018117 & 1.26679848 & -101.769562 \\
+0.000461900408 & -0.0000242372288 & 1
+\end{bmatrix} \)</p>
+    </section>
+     <section class="container">
+      <h3>Part A.3: Warp the Images</h2>
+      <p>Now that we are able to derive the homographic transform between two images, we need to be able to actually apply it to warp our images. In order to verify our warping implementation, we will attempt to perform rectification on a couple of images. In the images below, I present the original image (left), the image rectified using nearest neighbor interpolation (center), and the image rectified using bilinear interpolation (right):</p>
+      <p style="text-align: center;"><img src="./assets/bed.jpg" width="30%"> <img src="./assets/rect_bed_nn.jpg" width="30%">  <img src="./assets/rectified_bed.jpg" width="30%"></p>
+      <p style="text-align: center;"><img src="./assets/campanile_small.jpg" width="30%"> <img src="./assets/rect_nile_nn.jpg" width="30%">  <img src="./assets/rect_nile.jpg" width="30%"></p>
+      <p>The original image of the board above my bed was initially much more twisted than the image of the campanile, resulting in more dramatic rectification results. However, the scale of the image was very large and thus the nearest neighbor and bilinear interpolation methods are practically indistinguishable from one another. On the much smaller campanile images, however, we can observe carefully that some small features (e.g. the windows) appear more jagged and pixilated in nature on the nearest neighbor interpolation than the bilinear one. This reflects the fact that bilinear attempts to smoothly transition between pixel values while nearest neighbor simply discretely copies one value or another, leading to sharper changes.</p>
+      </section>
+    <section class="container">
+      <h3>Part A.4: Blend the Images into a Mosaic</h2>
+      <p>Now that we're able to warp the images, it is finally time to put them together into a mosaic! Once the images have been warped appropriately (warping one image onto the other image using the methods we've developed in the previous parts), we need to correctly mask which parts of each image to use. To do this, we can create alpha masks that fall off linearly from the centers of each image:
+      <p style="text-align: center;"><img src="./assets/grad1_mask.jpg" width="45%"> <img src="./assets/grad2_mask.jpg" width="45%"></p>
+      <p>Next, we can logically compare the values of these masks to derive which image is more applicable for each pixel. This comparison results in the following binary mask:</p>
+      <p style="text-align: center;"><img src="./assets/my_mask.jpg" width="60%"></p>
+      <p>Applying this binary mask naively to our transformed images can yield a reasonable result, but the border between images can still be apparent. As a result, we can use the Laplacian pyramid smoothing technique from last project to further blend the edges of the images together. The left image is an example with raw binary masking, while the right presents the same example with Laplacian smoothing:</p>
+      <p style="text-align: center;"><img src="./assets/garden_blendless.jpg" width="45%"> <img src="./assets/Rosegarden12.jpg" width="45%"></p>
+      <br>
+      <p>Now that our blending pipeline is established, we can apply it iteratively to produce more mosaics. Each of the following mosaics were produced by sequentially pairwise blending images (e.g. blending 1 and 2, then blending the result with 3):</p>
+      <p style="text-align: center;"><img src="./assets/windowview3.jpg" width="30%"> <img src="./assets/windowview2.jpg" width="30%">  <img src="./assets/windowview1.jpg" width="30%"></p>
+      <p style="text-align: center;"><img src="./assets/full_windowview.jpg" width="70%"></p>
+      <p style="text-align: center;"><img src="./assets/tunnel_3.jpg" width="30%"> <img src="./assets/tunnel_2.jpg" width="30%">  <img src="./assets/tunnel_1.jpg" width="30%"></p>
+      <p style="text-align: center;"><img src="./assets/full_tunnel.jpg" width="70%"></p>
+      <p style="text-align: center;"><img src="./assets/Rosegarden1_resized.jpg" width="22.5%"> <img src="./assets/Rosegarden2_resized.jpg" width="22.5%">  <img src="./assets/Rosegarden3_resized.jpg" width="22.5%"> <img src="./assets/Rosegarden4_resized.jpg" width="22.5%"></p>
+      <p style="text-align: center;"><img src="./assets/Rosegarden3412.jpg" width="70%"></p>
+      </section>
+    </section>
+
+  <!-- <section class="container">
+    <h2>Part 2: Architectural Perspective Compression</h2>
+    <p>
+      Zooming in on the cherry trees on the west side of campus.
+    </p>
+    <p style="text-align: center;"><img src="./media/path_normal.jpeg" width="45%">
+    <img src="./media/path_zoomed.jpeg" width="45%"></p>
+  </section>
+  <section class="container">
+    <h2>Part 3: The Dolly Zoom</h2>
+    <p>
+      Recreating "Vertigo shot" effect, with a fossilized co-star.
+    </p>
+    <p style="text-align: center;"><img src="./media/dolly_zoom.gif" width="70%">
+    </p>
+  </section>
+
+  <section id="comparisons" class="container">
+  <h2>Small Images</h2>
+  <p>Please note that shift amounts are denoted as (x, y)</p> -->
+  
+ 
+
+  <!-- ====== Footer ====== -->
+<!--   <footer>
+    <p>© 2025 Jaimyn Drake. Built with ❤️ and lots of robotics coffee.</p>
+  </footer> -->
+
+</body>
+</html>
+<!-- ====== Boilerplate provided by ChatGPT ====== -->
