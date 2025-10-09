@@ -47,7 +47,25 @@
       <p>Next, we need to be able to compute the relative homographies between two images we want to align. To begin, we must register a sufficient number of corresponding points between both images (in this case we use 8). This is currently done by hand, but will be performed programmatically in Part 2 of the project. Here are the selected correspondences for one of the image pairs:</p>
       <p style="text-align: center;"><img src="./assets/points1.jpg" width="45%"> <img src="./assets/points2.jpg" width="45%"></p>
       <br>
-      <p>With these point values, the matrix-vector system of equations is given by \( Ax = b \), where</p>
+      <p>With these point values, the matrix-vector system of equations is given by \( Ax = b \), where for a set of initial points \(x_i, y_i\) and their corresponding target points \(u_i, v_i\):</p>
+      <p style="text-align: center;">\( 
+        A = \begin{bmatrix} x_1 & y_1 & 1 & 0 & 0 & 0 & -x_1u_1 & -y_1u_1 \\ 
+        0 & 0 & 0 & x_1 & y_1 & 1 & -x_1v_1 & -y_1v_1 \\ 
+        x_2 & y_2 & 1 & 0 & 0 & 0 & -x_2u_2 & -y_2u_2 \\ 
+        0 & 0 & 0 & x_2 & y_2 & 1 & -x_2v_2 & -y_2v_2 \\ 
+        x_3 & y_3 & 1 & 0 & 0 & 0 & -x_3u_3 & -y_3u_3 \\ 
+        0 & 0 & 0 & x_3 & y_3 & 1 & -x_3v_3 & -y_3v_3 \\
+        \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots
+   \end{bmatrix}, x = \begin{bmatrix} h_1 \\ h_2 \\ h_3 \\ h_4 \\ h_5 \\ h_6 \\ h_7 \\ h_8 \\ \end{bmatrix}, b = \begin{bmatrix}
+u_1 \\
+v_1 \\
+u_2 \\
+v_2 \\
+u_3 \\
+v_3 \\
+\vdots
+\end{bmatrix}\) </p>
+      <p>Thus, for our particular image example, the system of equations is given by:</p>
       <p style="text-align: center;">\( A = \begin{bmatrix} 335.896104 & 122.746753 & 1 & 0 & 0 & 0 & -33787.0039 & -12346.8090 \\ 
         0 & 0 & 0 & 335.896104 & 122.746753 & 1 & -32014.8248 & -11699.2003 \\ 
         577.535714 & 274.694805 & 1 & 0 & 0 & 0 & -214102.615 & -101834.180 \\
@@ -64,7 +82,7 @@
         0 & 0 & 0 & 631.350649 & 649.288961 & 1 & -409262.809 & -420891.029 \\
         570.149351 & 521.610390 & 1 & 0 & 0 & 0 & -207754.649 & -190067.713 \\
         0 & 0 & 0 & 570.149351 & 521.610390 & 1 & -299200.681 & -273728.600
-   \end{bmatrix}, x = \begin{bmatrix} h_1 \\ h_2 \\ h_3 \\ h_4 \\ h_5 \\ h_6 \\ h_7 \\ h_8 \\ \end{bmatrix}, b = \begin{bmatrix}
+   \end{bmatrix}, b = \begin{bmatrix}
 100.58766234 \\
 95.31168831 \\
 370.71753247 \\
