@@ -138,6 +138,48 @@ h_7 & h_8 & 1
       </section>
     </section>
 
+<section class="container">
+    <h2>Part B</h2>
+    <section class="container">
+      <h3>Part B.1: Harris Corner Detection</h2>
+      <p>In part B of this project, we need to generate our correspondences programmatically. To do this, we can select point candidates using Harris corner detection, which should give us 'corners', or points that are easily distinguishable in the image. The result of running this algorithm on our nighttime image is as follows:</p>
+      <p style="text-align: center;"><img src="./assets/b/harris_points_1_reg.jpg" width="45%"> <img src="./assets/b/harris_points_2_reg.jpg" width="45%"></p>
+      <p>While most of the points selected probably are indeed 'corners', we can observe that the seen is more dense with selections than we really need. Ideally, we would like our selected points to be spatially distinct so that correspondences don't get confused. As a result, we can employ Adaptive Non-Maximal Suppression (ANMS), which only preserves the best 'corner' within a given radius. The resulting selections with this filtering can be seen as follows:</p>
+      <p style="text-align: center;"><img src="./assets/b/harris_points_1_anms.jpg" width="45%"> <img src="./assets/b/harris_points_2_anms.jpg" width="45%"></p>
+      <p>We can observe that we still keep a reasonable number of selected points, but now they are more spatially separated as we desired.</p>
+    </section>
+     <section class="container">
+      <h3>B.2: Feature Descriptor Extraction</h2>
+      <p>Now that we've selected our points of interest, we need a way to qualitatively describe them so that they can be properly compared with neighbors from the other image view. Thus, rather than just taking individual pixel values, we would like to sample small patches around the points in question to get a more holistic view of each point in question. In order to account for potential lighting differences, we must make sure to normalize our patches. Because we don't want the descriptors to be biased by the effects of noise, we will also smooth an initial 40 x 40 sampled patch into a smaller 8 x 8 representation, which should demonstrate the more fundamental low-frequency characteristics that identify a particular 'corner' in question. Here are some examples of generated feature patches:</p>
+      <p style="text-align: center;"><img src="./assets/b/image_patch1_0.jpg" width="17%"> <img src="./assets/b/image_patch1_1.jpg" width="17%"> <img src="./assets/b/image_patch1_2.jpg" width="17%"> <img src="./assets/b/image_patch1_3.jpg" width="17%"> <img src="./assets/b/image_patch1_4.jpg" width="17%"></p>
+      <p style="text-align: center;"><img src="./assets/b/image_patch1_5.jpg" width="17%"> <img src="./assets/b/image_patch1_6.jpg" width="17%"> <img src="./assets/b/image_patch1_7.jpg" width="17%"> <img src="./assets/b/image_patch1_8.jpg" width="17%"> <img src="./assets/b/image_patch1_9.jpg" width="17%"></p>
+      <br>
+    </section>
+     <section class="container">
+      <h3>Part B.3: Feature Matching</h2>
+      <p>With our feature patches generated, we can now compare them to find correspondences! To do this, we can compare the Euclidean distances between image patches in 64-dimensional space and use Lowe thresholding to select only pairs that are similar to one another and no other patches. Doing so gives us a subset of the original 'corners' that have correspondences, which can be visualized between our images as follows:</p>
+      <p style="text-align: center;"><img src="./assets/b/correspondences.jpg" width="90%"></p>
+      </section>
+    <section class="container">
+      <h3>Part B.4: RANSAC for Robust Homography</h2>
+      <p>Given all of our candidate correspondences from feature matching, we now want to figure out an optimal transformation between our two images to actually generate our mosaic. To do this, we will employ RANSAC (Random Sample Consensus), which involves selecting subsets of correspondences, computing a hypothetical transform, comparing that transform to all of the other correspondences, and counting that number that 'agree' (the transformation error is small). After trying a number of samples, we can be assured that the sample with the most "inliers" (correspondences that have low error) best represents 'true' correspondences that are present between the two images (all of the 'inliers'). This set of correspondences can then be used to recompute a final image transformation to use for our mosaic.</p>
+      <br>
+      <p>With our transformation automatically derived, we can use the same image transformation and blending techniques from Part A to auto-generate mosaics from scratch. The resulting mosaics on our captured images are as follows (once more produced by sequential pairwise blending as described above): </p>
+      <p style="text-align: center;"><img src="./assets/windowview3.jpg" width="30%"> <img src="./assets/windowview2.jpg" width="30%">  <img src="./assets/windowview1.jpg" width="30%"></p>
+      <p style="text-align: center;"><img src="./assets/b/windowview_blended.jpg" width="70%"></p>
+      <p style="text-align: center;"><img src="./assets/tunnel_3.jpg" width="30%"> <img src="./assets/tunnel_2.jpg" width="30%">  <img src="./assets/tunnel_1.jpg" width="30%"></p>
+      <p style="text-align: center;"><img src="./assets/b/tunnel_blended.jpg" width="70%"></p>
+      <p style="text-align: center;"><img src="./assets/Rosegarden1_resized.jpg" width="22.5%"> <img src="./assets/Rosegarden2_resized.jpg" width="22.5%">  <img src="./assets/Rosegarden3_resized.jpg" width="22.5%"> <img src="./assets/Rosegarden4_resized.jpg" width="22.5%"></p>
+      <p style="text-align: center;"><img src="./assets/b/Rosegarden_blended.jpg" width="70%"></p>
+      <p>For reference, we can compare these results (left) with the blending results using manual correspondences (right):</p>
+      <p style="text-align: center;"><img src="./assets/b/windowview_blended.jpg" width="45%"> <img src="./assets/full_windowview.jpg" width="45%"></p>
+      <p style="text-align: center;"><img src="./assets/b/tunnel_blended.jpg" width="45%"> <img src="./assets/full_tunnel.jpg" width="45%"></p>
+      <p style="text-align: center;"><img src="./assets/b/Rosegarden_blended.jpg" width="45%"> <img src="./assets/Rosegarden3412.jpg" width="45%"></p>
+
+      <p>For the most part, the blending results of the manual and automatic methods are rather similar, since both methods of correspondence selection ended up being decent in quality. That said, the result from automatic correspondences appears to have eliminated a </p>
+      </section>
+    </section>
+
   <!-- <section class="container">
     <h2>Part 2: Architectural Perspective Compression</h2>
     <p>
