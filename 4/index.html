@@ -27,7 +27,7 @@
   <header>
     <div>
       <h1>CS 180 Project 4: Neural Radiance Fields!</h1>
-      <p>In this project, perform the camera calibration and develop the neural network architecture to train our own neural radiance fields.</p>
+      <p>In this project, we perform the camera calibration and develop the neural network architecture to train our own neural radiance fields.</p>
       <!--<a href="#projects" class="btn">See My Work</a> -->
     </div>
   </header>
@@ -54,7 +54,7 @@
     <p>Here is a comparison of the effects of positional embedding length and layer width on our reconstruction quality. The left column indicates a positional embedding length of L=2, while the right corresponds to L=10. The top row represents a model width of W=16, while the bottom row corresponds to a model width of W=256:</p>
     <p style="text-align: center;"><img src="./assets/1/L2W16.jpg" width="45%"> <img src="./assets/1/L10W16.jpg" width="45%"></p>
     <p style="text-align: center;"><img src="./assets/1/L2W256.jpg" width="45%"> <img src="./assets/1/L10W256.jpg" width="45%"> </p>
-    <p>In order to quantify the quality of our reconstructions, we can measure the PSNR (peak signal-to-noise ratio) over our iterations. One example of the PSNR behavior during our training can be seen in the following plot for our flower network over time:</p>
+    <p>In order to quantify the quality of our reconstructions, we can measure the PSNR (peak signal-to-noise ratio) over our iterations. One example of the training PSNR behavior during our training can be seen in the following plot for our flower network over time:</p>
     <p style="text-align: center;"><img src="./assets/1/Flower_PSNR.png" width="60%"> </p>
   </section>
 
@@ -75,7 +75,7 @@
     <p>Finally, we need to implement the volume rendering function. To do this, I express the summation approximation for rendering as an outer product as an outer product between the rgb vector and the computed alpha (itself the product of the transmittance, computed using torch.cumsum, and the opacity). As before, I also implement a batched version of the operation so that the rendering can be run efficiently during training and inference. </p><br>
     <p>With the entire NeRF process implemented, I finally train the model with a learning rate of 5e-4, batch size of 10000, positional encoding L=10, and 32 samples. While the model exhibits reasonable behavior for much earlier iterations, I run it for a total of 10000 gradient steps. A visualization of the training process from one validation view is as follows:</p>
     <p style="text-align: center;"><img src="./assets/2/lego400_image5.jpg" width="16%"> <img src="./assets/2/lego800_image5.jpg" width="16%"> <img src="./assets/2/lego1600_image5.jpg" width="16%"> <img src="./assets/2/lego3200_image5.jpg" width="16%"> <img src="./assets/2/lego6400_image5.jpg" width="16%"> <img src="./assets/2/lego10000_image5.jpg" width="16%"></p><br>
-    <p>This progression corresponds to the following PSNR curve during training:</p>
+    <p>This progression corresponds to the following validation PSNR curve during training:</p>
     <p style="text-align: center;"><img src="./assets/2/Lego_PSNR.png" width="60%"></p><br>
     <p>With the final trained model, we can produce novel views of our scene. Using the provided test camera poses, we can produce the following spherical rendering of our lego bulldozer:</p>
     <p style="text-align: center;"><img src="./assets/2/lego.gif" width="60%"></p>
