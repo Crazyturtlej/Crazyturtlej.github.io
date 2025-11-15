@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CS 180 Project 4: Neural Radiance Fields!</title>
+  <link rel="stylesheet" href="../style.css" />
+  <!-- Optional: Google Fonts for Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+ <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+</head>
+<body>
+
+  <!-- ====== Navbar ====== -->
+  <nav class="container">
+    <ul>
+      <li><a href="../index.html">Return to Home</a></li>
+      <!-- <li><a href="#projects">Projects</a></li>
+      <li><a href="#contact">Contact</a></li> -->
+    </ul>
+  </nav>
+
+  <!-- ====== Hero Section ====== -->
+  <header>
+    <div>
+      <h1>CS 180 Project 4: Neural Radiance Fields!</h1>
+      <p>In this project, perform the camera calibration and develop the neural network architecture to train our own neural radiance fields.</p>
+      <!--<a href="#projects" class="btn">See My Work</a> -->
+    </div>
+  </header>
+
+  <!-- ====== Assignment Parts ====== -->
+
+  <section class="container">
+    <h3>Part 0: Calibrating Your Camera and Capturing a 3D Scan</h2>
+    <p>In order to train our neural radiance fields (NeRFs), we first need to calibrate the camera we're using to capture our images. In order to do this, we can use OpenCV's existing functions and capture our own test images of a set of six ArUco tags. After successfully calibrating our intrinsics matrix, we can use Perspective-n-Point (PnP) to estimate the extrinsic poses of our camera during each of the captures. A visualization in viser of the estimated camera frustums for our ArUco tag images is as follows:</p>
+    <p style="text-align: center;"><img src="./assets/0/Frustums1.png" width="40%"> <img src="./assets/0/Frustums2.png" width="40%"></p>
+    <p>Additionally, we can also take the time to capture our image dataset of Milk the teddy bear to build our dataset. Using the same camera intrinsics we found during calibration gives us the following visualized extrinsics:</p>
+    <p style="text-align: center;"><img src="./assets/0/Mfrustums.png" width="40%"> <img src="./assets/0/Mfrustums2.png" width="41.5%"></p>
+    <p>Now that we have our images captures and camera properties derived (and images stored in dataset form), we can begin learning!</p>
+  </section>
+
+  <section class="container">
+    <h3>Part 1: Fit a Neural Field to a 2D Image</h2>
+    <p>Before we train a full NeRF, we will instead begin with the two-dimensional case: neural image reconstruction. To do this, we will use the following 4-layer architecture provided by the project specification:</p>
+    <p style="text-align: center;"><img src="./assets/1/Arch2d.png" width="90%"> </p>
+    <p>For my implementation of the image reconstruction model, I used a learning rate of 1e-2 on batch sizes of 10000. I employed a positional embedding length corresponding to L=10 (thus leading to an overall positional embedding of our 2D points of length 42), and layer width of W=256 (as seem in the architecture above). While the reconstruction quality was passable after 1000-2000 gradient iterations, I trained on a total of 5000 iterations for my final result. Here is the reconstruction progression for the provided fox image:</p>
+    <p style="text-align: center;"><img src="./assets/1/fox_1.jpg" width="16%"> <img src="./assets/1/fox_101.jpg" width="16%"> <img src="./assets/1/fox_201.jpg" width="16%"> <img src="./assets/1/fox_400.jpg" width="16%"> <img src="./assets/1/fox_1600.jpg" width="16%"> <img src="./assets/1/fox_4800.jpg" width="16%"></p>
+    <p>And here is the reconstruction progression for my own image that I took of a flower:</p>
+    <p style="text-align: center;"><img src="./assets/1/flow_1.jpg" width="16%"> <img src="./assets/1/flow_201.jpg" width="16%"> <img src="./assets/1/flow_401.jpg" width="16%"> <img src="./assets/1/flow_801.jpg" width="16%"> <img src="./assets/1/flow_1601.jpg" width="16%"> <img src="./assets/1/flow_4992.jpg" width="16%"></p>
+    <p>Here is a comparison of the effects of positional embedding length and layer width on our reconstruction quality. The left column indicates a positional embedding length of L=2, while the right corresponds to L=10. The top row represents a model width of W=16, while the bottom row corresponds to a model width of W=256:</p>
+    <p style="text-align: center;"><img src="./assets/1/L2W16.jpg" width="45%"> <img src="./assets/1/L10W16.jpg" width="45%"></p>
+    <p style="text-align: center;"><img src="./assets/1/L2W256.jpg" width="45%"> <img src="./assets/1/L10W256.jpg" width="45%"> </p>
+    <p>In order to quantify the quality of our reconstructions, we can measure the PSNR (peak signal-to-noise ratio) over our iterations. One example of the PSNR behavior during our training can be seen in the following plot for our flower network over time:</p>
+    <p style="text-align: center;"><img src="./assets/1/Flower_PSNR.png" width="60%"> </p>
+  </section>
+
+  <section class="container">
+    <h3>Part 2: Fit a Neural Radiance Field from Multi-view Images</h2>
+    <p>Now that we've managed to implement 2D neural images, it's time to finally develop some NeRFs. In order to do this, we must implement our NeRF architecture.</p>
+    <h4>Part 2.1: Create Rays from Cameras</h4>
+    <p>In order to generate our rays, we first need to be able to translate from pixels into the world frame. To do this, we can invert both our existing intrinsics matrix and our extrinsics matrix, which allow us to convert from the pixel coordinate (u, v), in homogeneous coordinates to camera frame coordinates (xc, yc, 1) and then from camera coordinates (xc, yc, 1, 1) to world coordinates (xw, yw, zw, 1). These are each implemented as their own functions, which include simple matrix multiplications. In order to generate our rays themselves, we can then use the provided formula to subtract the origin point ro (which is always simply the translational position of a given camera in world coordinates) from our generated world coordinates before normalizing (note that we always normalize this ray, which is why our camera coordinate points are always allowed to have an arbitrary z value of 1). In order to support downstream operations, I implemented additional batched versions of each of the functions, which involved more data processing (unsqueezing, repeating, calling batched operations) in order to implement the same fundamental matrix operations.</p><br>
+    <h4>Part 2.2: Sampling</h4>
+    <p>In order to actually sample these rays from an image (the previous point was only for arbitrary pixels), I defined my own RaysData Dataset instance, which takes in an image and allows us to automatically index rays. In practice, the class pre-computes all of the rays associated with the image by calling the above functionality on batched pixels (hence why the batching is important for runtime). From here, I implement a separate sample_along_rays function, which produces points from a given ray using the linear method provided in the example code. Once again, to support inference, I also implement a batched version of the operation, which will allow us to call the function on whole batches of rays during runtime. </p><br>
+    <h4>Part 2.3: Putting the Dataloading All Together</h4>
+    <p>Because I've implemented RaysData as a torch Dataset object, I can easily load data from it in shuffled batches by encapsulating it in a Dataloader object. This functionality draws directly from torch, and allows me to sample rays in an efficient manner. During runtime, the dataloader can be enumerated, and for visualization it can also be converted to an iterator object. A visualization of 100 sample rays my dataloader generates is as follows:</p>
+    <p style="text-align: center;"><img src="./assets/2/SampleRays.png" width="60%"></p><br>
+    <h4>Part 2.4: Neural Radiance Field</h4>
+    <p>To implement the NeRF network itself, I use the following provided architecture, without modification, using torch's nn.Module class structure. This includes modifying the positional encoding scheme from part 1 to support three dimensional input vectors.</p>
+    <p style="text-align: center;"><img src="./assets/2/NeRF_architecture.png" width="60%"></p><br>
+    <h4>Part 2.5: Volume Rendering</h4>
+    <p>Finally, we need to implement the volume rendering function. To do this, I express the summation approximation for rendering as an outer product as an outer product between the rgb vector and the computed alpha (itself the product of the transmittance, computed using torch.cumsum, and the opacity). As before, I also implement a batched version of the operation so that the rendering can be run efficiently during training and inference. </p><br>
+    <p>With the entire NeRF process implemented, I finally train the model with a learning rate of 5e-4, batch size of 10000, positional encoding L=10, and 32 samples. While the model exhibits reasonable behavior for much earlier iterations, I run it for a total of 10000 gradient steps. A visualization of the training process from one validation view is as follows:</p>
+    <p style="text-align: center;"><img src="./assets/2/lego400_image5.jpg" width="16%"> <img src="./assets/2/lego800_image5.jpg" width="16%"> <img src="./assets/2/lego1600_image5.jpg" width="16%"> <img src="./assets/2/lego3200_image5.jpg" width="16%"> <img src="./assets/2/lego6400_image5.jpg" width="16%"> <img src="./assets/2/lego10000_image5.jpg" width="16%"></p><br>
+    <p>This progression corresponds to the following PSNR curve during training:</p>
+    <p style="text-align: center;"><img src="./assets/2/Lego_PSNR.png" width="60%"></p><br>
+    <p>With the final trained model, we can produce novel views of our scene. Using the provided test camera poses, we can produce the following spherical rendering of our lego bulldozer:</p>
+    <p style="text-align: center;"><img src="./assets/2/lego.gif" width="60%"></p>
+  </section>
+
+  <section class="container">
+    <h3>Part 2.6: Training with Your Own Data</h2>
+    <p>With our dataset collected from part 0 and NeRF architecture implemented from the rest of part 2, we can finally run our NeRF to reconstruct Milk in 3D! This part did no involve and architectural changes for me, but I did modify the "near" and "far" distances for rendering from their previous values of 2.0 and 6.0 to 0.02 and 0.5 respectively, and increased the number of points sampled along each ray from 32 to 64. Here are some visualizations from the resulting training run:</p>
+    <p style="text-align: center;"><img src="./assets/2.6/milk432_image12.jpg" width="16%"> <img src="./assets/2.6/milk864_image12.jpg" width="16%"> <img src="./assets/2.6/milk1728_image12_safe.jpg" width="16%"> <img src="./assets/2.6/milk3456_image12_safe.jpg" width="16%"> <img src="./assets/2.6/milk6912_image12_safe.jpg" width="16%"> <img src="./assets/2.6/milk9936_image12_safe.jpg" width="16%"></p><br>
+    <p>The corresponding training Loss (left) and PSNR (right) over the course of training are as follows:</p>
+    <p style="text-align: center;"><img src="./assets/2.6/Loss_Milk.png" width="45%"> <img src="./assets/2.6/PSNR_Milk.png" width="45%"> </p><br>
+    Finally, after a complete training run of 10000 iterations, we can visualize the following novel spherical view of our scence:
+    <p style="text-align: center;"><img src="./assets/2.6/milk.gif" width="70%"></p><br>
+
+   <p>Milk is very happy to be finished with this long project.</p>
+   <p style="text-align: center;"><img src="./assets/2.6/Milk.jpg" width="60%"></p><br>
+  </section>
+     
+
+
+  <!-- ====== Footer ====== -->
+<!--   <footer>
+    <p>© 2025 Jaimyn Drake. Built with ❤️ and lots of robotics coffee.</p>
+  </footer> -->
+
+</body>
+</html>
+<!-- ====== Boilerplate provided by ChatGPT ====== -->
