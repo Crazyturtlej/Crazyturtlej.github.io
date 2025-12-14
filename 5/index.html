@@ -929,6 +929,9 @@ learning_rate = 1e-2
 hidden_dim = 64
 num_epochs = 10
   </code></pre>
+
+  <br>
+  <h3>2.6: Sampling from the UNet</h3>
   <p>As before, we can now perform sampling in order to actually generate digit images. In this case, we instead perform CFG to perform our generations, since this allows us to fully leverage the benefits of class conditioning by biasing our results towards the desired class. Resulting generations from this final process (for model checkpoints at different epochs) can be seen as follows:</p>
     <div class="comparison-pair">
       <div class="comparison-img">
