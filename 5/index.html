@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CS 180 Project 5: Fun with Diffusion Models!</title>
+  <link rel="stylesheet" href="../style.css" />
+  <!-- Optional: Google Fonts for Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+ <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+</head>
+<body>
+
+  <!-- ====== Navbar ====== -->
+  <nav class="container">
+    <ul>
+      <li><a href="../index.html">Return to Home</a></li>
+      <!-- <li><a href="#projects">Projects</a></li>
+      <li><a href="#contact">Contact</a></li> -->
+    </ul>
+  </nav>
+
+  <!-- ====== Hero Section ====== -->
+  <header>
+    <div>
+      <h1>CS 180 Project 5: Fun with Diffusion Models!</h1>
+      <p>In this project, we use a pre-trained diffusion model (DeepFloyd IF) to perform a variety of image generation and modification tasks. Then, we train our own diffusion model architecture from scratch on the MNIST digit dataset.</p>
+      <!--<a href="#projects" class="btn">See My Work</a> -->
+    </div>
+  </header>
+
+  <!-- ====== Assignment Parts ====== -->
+
+  <section class="container">
+    <h2>Part A: The Power of Diffusion Models!</h2>
+    <h3>Part 0: Setup</h3>
+    <p>To begin, we need to ensure that we can actually generate images from our pre-trained diffusion model. To do this, we can begin by generating embeddings for a set of textual prompts:</p>
+    <pre><code class="language-python">
+'a high quality photo',
+'a photo of a spaniel named Daniel',
+'a diagram of a dog made out of vector arrows',
+'a sketch of a dog made out of signals',
+'a photo of a black robotic dragon with red eyes',
+'a schematic for creating a metal dragon',
+"a painting of a fiery dragon's maw",
+'a painting of a sunset over a range of mountains',
+'a drawing of a dragon that has evolved from a turtle',
+'a photo of an egg cooking in a frying pan',
+'a photo of a dyson sphere engulfing the sun',
+ ''
+  </code></pre>
+    <p>With these embeddings generated, we can then simply call the two predefined stages of DeepFloyd to generate the corresponding images. Here are some example generations using 20 inference steps in each of the two stages:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/0/mountains_20.png" width=90% alt="a painting of a sunset over a range of mountains">
+        <p>'a painting of a sunset over a range of mountains'</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/0/red_eyes_20.png" width=90% alt="a photo of a black robotic dragon with red eyes">
+        <p>'a photo of a black robotic dragon with red eyes'</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/0/dyson_20.png" width=90% alt="a photo of a dyson sphere engulfing the sun">
+        <p>'a photo of a dyson sphere engulfing the sun'</p>
+      </div>
+    </div>
+    </div>
+    Similarly, here are the generation results for the same prompts using 40 inference steps in each of the two stages:
+     <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/0/mountains_40.png" width=90% alt="a painting of a sunset over a range of mountains">
+        <p>'a painting of a sunset over a range of mountains'</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/0/red_eyes_40.png" width=90% alt="a photo of a black robotic dragon with red eyes">
+        <p>'a photo of a black robotic dragon with red eyes'</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/0/dyson_40.png" width=90% alt="a photo of a dyson sphere engulfing the sun">
+        <p>'a photo of a dyson sphere engulfing the sun'</p>
+      </div>
+    </div>
+    </div>
+    <p>From these generations and others like them, we observe that the model adheres more strongly to the objects in question (e.g. mountains, dragon), than the actual modality of presentation (e.g. painting, photo). This effect appears to be more pronounced for the examples with a greater number of inference steps, but can occur across both parameters. Additionally, objects that are more amorphous (e.g. dragon or dyson sphere, both of which are fictional) have a broader variety in the generated outputs, which makes sense given the likely variation in training data used for the model training.</p><br>
+    <p>For all stages of my process, I use a randomization seed value of 100, which helps guarantee reproducibility.</p>
+    <br>
+    <h3>Part 1.1: Implementing the Forward Process</h3>
+    <p>Now, in order to actually perform diffusion for ourselves, we need to be able to apply noise to images. In our case, we can formulate this noise as being defined by a 'timestep', t, in this case ranging from 0 to 1000. Lower timesteps correspond to less noise, while higher values correspond to more noise. Here are the results of applying different amounts of noise to a photo of the Campanile:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90% >
+        <p>Original Campanile Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_250.png" width=90%>
+        <p>Noisy Campanile at t=250</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_500.png" width=90%>
+        <p>Noisy Campanile at t=500</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_750.png" width=90%>
+        <p>Noisy Campanile at t=750</p>
+      </div>
+    </div>
+    </div>
+    <br>
+    <h3>Part 1.2: Classical Denoising</h3>
+    <p>One application that we can use our diffusion models for is the task of denoising images. In fact, the diffusion method itself consists of a process of repeatedly "denoising" an image until it lives on the desired manifold. Without using learning, however, a classical method that we have learned is the simple Gaussian blur filter. Here are the results of using Gaussian blur filters to denoise the campanile under different amounts of noise:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_250.png" width=90%>
+        <p>Noisy Campanile at t=250</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_500.png" width=90%>
+        <p>Noisy Campanile at t=500</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_750.png" width=90%>
+        <p>Noisy Campanile at t=750</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.2/gaussian_campanile_250.png" width=90% >
+        <p>Gaussian Blur Denoising at t=250, kernel size 9</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.2/gaussian_campanile_500.png" width=90%>
+        <p>Gaussian Blur Denoising at t=500, kernel size 15</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.2/gaussian_campanile_750.png" width=90%>
+        <p>Gaussian Blur Denoising at t=750, kernel size 23</p>
+      </div>
+    </div>
+    </div>
+    <p>As we can see, the campanile is somewhat distinguishable, but overall lost in the blurring operation itself. This is especially apparent for high amounts of noise, which warrant high amounts of blurring.</p>
+
+    <br>
+    <h3>Part 1.3: One-Step Denoising</h3>
+    <p>Now that we've seen the performance of classical denoising, we can see how our diffusion model performs instead. To begin, we can simply use stage 1 of DeepFloyd to directly estimate the noise, and then subtract it from our noised image to get the predicted base image. Here are the results for different amounts of noise:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90%>
+        <p>Original Campanile Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90%>
+        <p>Original Campanile Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90%>
+        <p>Original Campanile Image</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_250.png" width=90%>
+        <p>Noisy Campanile at t=250</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_500.png" width=90%>
+        <p>Noisy Campanile at t=500</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_noise_750.png" width=90%>
+        <p>Noisy Campanile at t=750</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.3/one_step_denoise_250.png" width=90% >
+        <p>One-Step Denoised Campanile at t=250</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.3/one_step_denoise_500.png" width=90% >
+        <p>One-Step Denoised Campanile at t=500</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.3/one_step_denoise_750.png" width=90% >
+        <p>One-Step Denoised Campanile at t=750</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.4: Iterative Denoising</h3>
+    <p>While the results of denoising using diffusion are already much better than the Gaussian blur, we can actually improve them even further. In particular, the diffusion model is designed to perform denoising iteratively, so implementing an iterative denoising process that denoised the image over time will yield us improved results. Here are some visualizations of the partially denoised images across different "timesteps" (amounts of noise):</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_90.png" width=90%>
+        <p>Noisy Campanile at t=90</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_240.png" width=90%>
+        <p>Noisy Campanile at t=240</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_390.png" width=90%>
+        <p>Noisy Campanile at t=390</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_540.png" width=90%>
+        <p>Noisy Campanile at t=540</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_690.png" width=90%>
+        <p>Noisy Campanile at t=690</p>
+      </div>
+    </div>
+    </div>
+    <p>Overall, we see that the denoising results look much better than both the Gaussian blurr and the single-step prediction:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90% >
+        <p>Original Campanile Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_multistep.png" width=90% >
+        <p>Iteratively Denoised Campanile</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_singlestep.png" width=90% >
+        <p>One-Step Denoised Campanile</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.4/campanile_gauss.png" width=90% >
+        <p>Gaussian Blurred Campanile</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.5: Diffusion Model Sampling</h3>
+    <p>Now that we've observed how diffusion models perform iterative denoising, we can actually conduct iterative denoising on a purely noise image to generate new images! Here are some examples of such pure generations, using the base prompt "a high quality photo":</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.5/generated_1.png" width=90%>
+        <p>Sample 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.5/generated_2.png" width=90%>
+        <p>Sample 2</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.5/generated_3.png" width=90%>
+        <p>Sample 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.5/generated_4.png" width=90%>
+        <p>Sample 4</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.5/generated_5.png" width=90%>
+        <p>Sample 5</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.6: Classifier-Free Guidance (CFG)</h3>
+    <p>While the generated images above contain some realistic features, they are still imperfect. In order to strengthen the quality of our results, we can perform Classifier-Free Guidance (CFG), in which we bias the diffusion model's generations away from the general image manifold and towards a specific prompt. In this case, we can begin by simply biasing it toward the prompt "a high quality photo" and away from the null prompt "". For a conditioning scale of 7, we are able to generate the following results:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.6/cfg_1.png" width=90%>
+        <p>Sample 1 with CFG</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.6/cfg_2.png" width=90%>
+        <p>Sample 2 with CFG</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.6/cfg_3.png" width=90%>
+        <p>Sample 3 with CFG</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.6/cfg_4.png" width=90%>
+        <p>Sample 4 with CFG</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.6/cfg_5.png" width=90%>
+        <p>Sample 5 with CFG</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.7: Image-to-image Translation</h3>
+    <p>Besides simple generation, we can also use our pre-trained diffusion model to perform a series of other functions. One such function is image editing, in which we employ the SDEdit algorithm to progressively transfer from one image to another generation by adding noise. The depending on how much noise we apply (indicated by the variable i_start, in which lower values indicate more noise), our generations will deviate more and more from the original image. Here are results for both the campanile and two other images, all biasing towards the prompt "a high quality photo":</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7/campedit_1.png" width=90%>
+        <p>SDEdit with i_start = 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/campedit_3.png" width=90%>
+        <p>SDEdit with i_start = 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/campedit_5.png" width=90%>
+        <p>SDEdit with i_start = 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/campedit_7.png" width=90%>
+        <p>SDEdit with i_start = 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/campedit_10.png" width=90%>
+        <p>SDEdit with i_start = 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/campedit_20.png" width=90%>
+        <p>SDEdit with i_start = 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90%>
+        <p>Original Campanile</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7/arch_1.png" width=90%>
+        <p>SDEdit with i_start = 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/arch_3.png" width=90%>
+        <p>SDEdit with i_start = 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/arch_5.png" width=90%>
+        <p>SDEdit with i_start = 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/arch_7.png" width=90%>
+        <p>SDEdit with i_start = 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/arch_10.png" width=90%>
+        <p>SDEdit with i_start = 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/arch_20.png" width=90%>
+        <p>SDEdit with i_start = 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/arch_downsized.png" width=90%>
+        <p>Original Arch</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7/flower_1.png" width=90%>
+        <p>SDEdit with i_start = 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/flower_3.png" width=90%>
+        <p>SDEdit with i_start = 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/flower_5.png" width=90%>
+        <p>SDEdit with i_start = 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/flower_7.png" width=90%>
+        <p>SDEdit with i_start = 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/flower_10.png" width=90%>
+        <p>SDEdit with i_start = 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7/flower_20.png" width=90%>
+        <p>SDEdit with i_start = 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flower_downsized.png" width=90%>
+        <p>Original Flower</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.7.1: Editing Hand-Drawn and Web Images</h3>
+    <p>Besides photos, we can also perform the same style of generation for images from the web, or hand-drawn images. Here are the results of the same image editing process for a web image (pixel art) of the Yugioh card Blue-Eyes White Dragon:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes1.png" width=90%>
+        <p>Blue-Eyes at i_start = 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes_3.png" width=90%>
+        <p>Blue-Eyes at i_start = 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes_5.png" width=90%>
+        <p>Blue-Eyes at i_start = 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes_7.png" width=90%>
+        <p>Blue-Eyes at i_start = 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes_10.png" width=90%>
+        <p>Blue-Eyes at i_start = 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes_20.png" width=90%>
+        <p>Blue-Eyes at i_start = 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes.png" width=90%>
+        <p>Original Blue-Eyes</p>
+      </div>
+    </div>
+    </div>
+    <p>Similarly, here are a couple results for hand-drawn images:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/turtle_1.png" width=90%>
+        <p>Turtle at i_start = 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/turtle_3.png" width=90%>
+        <p>Turtle at i_start = 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/turtle_5.png" width=90%>
+        <p>Turtle at i_start = 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/turtle_7.png" width=90%>
+        <p>Turtle at i_start = 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/turtle_10.png" width=90%>
+        <p>Turtle at i_start = 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/turtle_20.png" width=90%>
+        <p>Turtle at i_start = 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/turtle_base.png" width=90%>
+        <p>Original Turtle Sketch</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/robot_1.png" width=90%>
+        <p>Robot at i_start = 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/robot_3.png" width=90%>
+        <p>Robot at i_start = 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/robot_5.png" width=90%>
+        <p>Robot at i_start = 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/robot_7.png" width=90%>
+        <p>Robot at i_start = 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/robot_10.png" width=90%>
+        <p>Robot at i_start = 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/robot_20.png" width=90%>
+        <p>Robot at i_start = 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/robot_base.png" width=90%>
+        <p>Original Robot Sketch</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.7.2: Inpainting</h3>
+    <p>We can also use this diffusion process for inpainting, in which we noise out only a subset of an image via masking and then generate a new visual to fill the hole. Here is an example of inpainting with the campanile, in which we replace the top:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90%>
+        <p>Original Campanile Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/campanile_mask.png" width=90%>
+        <p>Mask</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/campanile_to_remove.png" width=90%>
+        <p>Hole to Fill</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/campanile_inpainting.png" width=90%>
+        <p>Campanile Inpainted</p>
+      </div>
+    </div>
+    </div>
+    <p>Here are a couple of other examples of inpainting on real-world images:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/arch_downsized.png" width=90%>
+        <p>Original Arch Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/arch_mask.png" width=90%>
+        <p>Mask</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/arch_to_replace.png" width=90%>
+        <p>Hole to Fill</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/arch_inpainting.png" width=90%>
+        <p>Arch Inpainted</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/pond_downsized.png" width=90%>
+        <p>Original Pond Image</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/pond_mask.png" width=90%>
+        <p>Mask</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/pond_to_remove.png" width=90%>
+        <p>Hole to Fill</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.2/pond_inpainting.png" width=90%>
+        <p>Campanile Inpainted</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.7.3: Text-Conditional Image-to-image Translation</h3>
+    <p>Additionally, we can use text conditioning in order to direct our image editing process. In other words, instead of just having our image be replaced with any arbitrary generation, we can bias it towards a particular text prompt using CFG. Here are the results for the text prompt 'a photo of a black robotic dragon with red eyes' when applied to our campanile image:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/camp_dragon1.png" width=90%>
+        <p>Dragon at noise level 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/camp_dragon3.png" width=90%>
+        <p>Dragon at noise level 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/campdragon5.png" width=90%>
+        <p>Dragon at noise level 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/campdragon7.png" width=90%>
+        <p>Dragon at noise level 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/campdragon10.png" width=90%>
+        <p>Dragon at noise level 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/campdragon20.png" width=90%>
+        <p>Dragon at noise level 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.1/campanile_base.png" width=90%>
+        <p>Original Campanile Image</p>
+      </div>
+    </div>
+    </div>
+    <p>Here are the results for the prompt "a painting of a fiery dragon's maw" when applied to the web image of Blue-Eyes White Dragon:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/blue_fire1.png" width=90%>
+        <p>Dragon at noise level 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/blue_fire3.png" width=90%>
+        <p>Dragon at noise level 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/blue_fire5.png" width=90%>
+        <p>Dragon at noise level 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/blue_fire7.png" width=90%>
+        <p>Dragon at noise level 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/blue_fire10.png" width=90%>
+        <p>Dragon at noise level 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/blue_fire20.png" width=90%>
+        <p>Dragon at noise level 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.1/blue_eyes.png" width=90%>
+        <p>Original Blue-Eyes Image</p>
+      </div>
+    </div>
+    </div>
+
+    <p>Here are the results for the prompt 'a photo of an egg cooking in a frying pan' when applied to my photo of a flower:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flow_egg1.png" width=90%>
+        <p>Egg at noise level 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flow_egg3.png" width=90%>
+        <p>Egg at noise level 3</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flow_egg5.png" width=90%>
+        <p>Egg at noise level 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flow_egg7.png" width=90%>
+        <p>Egg at noise level 7</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flow_egg10.png" width=90%>
+        <p>Egg at noise level 10</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flow_egg20.png" width=90%>
+        <p>Egg at noise level 20</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.7.3/flower_downsized.png" width=90%>
+        <p>Original Flower Image</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.8: Visual Anagrams</h3>
+    <p>Additionally, we can also use the same diffusion process to generate visual anagrams! In particular, we can construct the CFG noise estimate for one textual prompt right side up and a noise estimate for a different text prompt upside down. By averaging out these estimates as we iteratively denoise our image, we can produce a result that appears like one prompt when viewed upright, and like another when viewed the other way around! Here are some examples of visual anagrams using our text prompts (note that one can use the same prompt twice for images that follow it from both perspectives):</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.8/egg_mountain.png" width=70%>
+        <p>'a photo of an egg cooking in a frying pan'</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.8/egg_mountain_flipped.png" width=70%>
+        <p>'a painting of a sunset over a range of mountains'</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.8/double_dog.png" width=70%>
+        <p>'a photo of a spaniel named Daniel'</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.8/double_dog_flipped.png" width=70%>
+        <p>'a photo of a spaniel named Daniel'</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.8/turtle_mountain.png" width=70%>
+        <p>'a drawing of a dragon that has evolved from a turtle'</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/1.8/turtle_mountain_flipped.png" width=70%>
+        <p>'a painting of a sunset over a range of mountains'</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.9: Hybrid Images</h3>
+    <p>Besides visual anagrams, we can also use diffusion to generate hybrid images. To do this, instead of flipping our noise estimations, we can apply frequency-based filtering to our noise predictions. By doing so, we are able to generate images whose low-frequency features correspond to one textual prompt, while their high-frequency features correspond to a different textual prompt. Here are some examples of generated hybrid images:</p>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.9/goated_dragon.png" width=50%>
+        <p>Hybring image of 'a photo of a spaniel named Daniel' and ''a photo of a black robotic dragon with red eyes'</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-grid">
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.9/dog_pan.png" width=50%>
+        <p>Hybring image of 'a photo of a spaniel named Daniel' and 'a photo of an egg cooking in a frying pan'</p>
+      </div>
+    </div>
+    </div>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/1.9/sun_drag2.png" width=50%>
+        <p>Hybring image of ''a photo of a dyson sphere engulfing the sun' and 'a schematic for creating a metal dragon'</p>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <section class="container">
+    <h2>Part B: Flow Matching from Scratch!</h2>
+    <h3>Part 1.1: Implementing the UNet</h3>
+    <p>Now that we've had fun seeing what diffusion models can do, it's time to implement our own! For this initial phase, we implement the following UNet architecture:</p>
+    <p style="text-align: center;"><img src="./assets/2.1/unconditional_arch.png" width="80%"></p>
+    <br>
+    <h3>Part 1.2: Using the UNet to Train a Denoiser</h3>
+    <p>As we've learned in Part A, the foundational operation learned by a diffusion model is the process of denoising. As a result, we most ourselves train the UNet we implemented to predict noise from an input image. Here are examples of images from the MNIST digit dataset, which we will be using to train our model, on a variety of different noise scales. Greater noise values, characterized by sigma, correspond to noisier images. Here are visualizations of the digit "1" under varying levels of noise:</p>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2/noised_1.png" width=80%>
+        <p>Noised versions of the digit "1" for sigma values in [0.0, 0.2, 0.4, 0.6, 0.8, 1.0], from left to right.</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.2.1: Training</h3>
+    <p>With our architecture and noising process implemented, we can train our UNet to predict the noise present in input images. For this phase, we will only be training on a fixed sigma value of 0.5. The training loss plot for this process is as follows:</p>
+     <!-- <p style="text-align: center;"><img src="./assets/2.2/denoising_loss.png", width=60%></p> -->
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2/denoising_loss.png" width=60%>
+        <p>Training loss values across iterations, sigma=0.5</p>
+      </div>
+    </div>
+    </div>
+    <p>After training, we can perform inference using the model to denoise our digit images for a noising of sigma=0.5. Here are the results after the first epoch of training:</p>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2/input_digs_ep1.png" width=60%>
+        <p>Input, epoch 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/noise_digs_ep1.png" width=60%>
+        <p>Noisy (sigma = 0.5), epoch 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/output_digs_ep1.png" width=60%>
+        <p>Output, epoch 1</p>
+      </div>
+    </div>
+    </div>
+    <p>Accordingly, here are the results after epoch 5 of training</p>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2/input_digs_ep5.png" width=60%>
+        <p>Input, epoch 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/noise_digs_ep5.png" width=60%>
+        <p>Noisy (sigma = 0.5), epoch 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/output_digs_ep5.png" width=60%>
+        <p>Output, epoch 5</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.2.2 Out-of-Distribution Testing</h3>
+    <p>As it turns out, our model can also be run zero-shot to estimate the noise behavior associated with other sigmas as well! Here are some model prediction results after the first epoch for sigmas in the range of [0.0, 0.2, 0.4, 0.6, 0.8, 1.0], from top to bottom row. </p>
+     <!-- <p style="text-align: center;"><img src="./assets/2.2/denoising_loss.png", width=60%></p> -->
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2/input_digsm_ep1.png" width=60%>
+        <p>Input, epoch 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/noise_digsm_ep1.png" width=60%>
+        <p>Noisy, epoch 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/output_digsm_ep1.png" width=60%>
+        <p>Output, epoch 1</p>
+      </div>
+    </div>
+    </div>
+     <p>Similarly, here are the results after epoch 5 of training, for the same levels of noising:</p>
+     <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2/input_digsm_ep5.png" width=60%>
+        <p>Input, epoch 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/noise_digsm_ep5.png" width=60%>
+        <p>Noisy, epoch 5</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2/output_digsm_ep5.png" width=60%>
+        <p>Output, epoch 5</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>Part 1.2.3 Denoising Pure Noise</h3>
+    <p>As an extension, one might expect that we could "denoise" digits from a purely random image, thus generating images of digits out of thin air. To do this, we would train a pure denoising model, that predicts the digit images given an input noise image. The training loss curve for our model is as follows:</p>
+     <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2.3/train_loss_pure_noise.png" width=60%>
+        <p>Training loss values across iterations, Pure Noise Model</p>
+      </div>
+    </div>
+    </div>
+    Some generated digits from this pure denoising model (after epoch 1 and epoch 5 respectively) can be visualized as follows:
+     <!-- <p style="text-align: center;"><img src="./assets/2.2/denoising_loss.png", width=60%></p> -->
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/2.2.3/pure_noise_pred1.png" width=60%>
+        <p>Predicted Digits, epoch 1</p>
+      </div>
+      <div class="comparison-img">
+        <img src="./assets/2.2.3/pure_noise_pred5.png" width=60%>
+        <p>Predicted Digits, epoch 5</p>
+      </div>
+    </div>
+    </div>
+    <p>As it turns out, this pure noise method does not work very well. Because the model has no semblance of the digit it should attempt to generate, in other words no sense of the desired digit class, it instead defaults to generating a single default digit. This digit is designed to minimize the training loss across all training input digits without customizing to each one, and thus appears to be the "average digit" (some visual blend of a 3 and 8, perhaps).</p>
+
+    <br>
+    <h3>2.1: Adding Time Conditioning to UNet</h3>
+    <p>In order to encourage our diffusion model to generate more varied inputs, we can begin by injecting conditioning into our model. In this case, informing the model that the specific noise it observes is a result of a particular timestep (in which timesteps actually have qualitative dinstinctions between them) begins to provide it with a prior that discourages simply averaging across all outputs. We implement this conditioning with the following updated UNet architecture: </p>
+     <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.1/conditional_arch_fm.png" width=60%>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>2.2: Training the UNet</h3>
+    <p>With our new conditional architecture implemented, we can train another UNet to better predict the noise present in input images. Note that in this case, we will be predicting the error between the true image and the original noise image, rather than the desired image by itself. The training loss plot for this model architecture is as follows (note that the training loss converges to the range of 0.17-0.19):</p>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.2/training_loss_time_condition.png" width=60%>
+        <p>Training loss values across iterations, Time Conditioned Model</p>
+      </div>
+    </div>
+    </div>
+    <br>
+    <h3>2.3: Sampling from the UNet</h3>
+    <p>With our UNet Implemented, we can now perform sampling in order to actually generate digit images. In particular, we will gradually add scaled versions of the error predictions from our model to the original noise images, which allows us to more stably approach our desired generation. Resulting generations from this process (for model checkpoints at different epochs) can be seen as follows:</p>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.2/time_results_ep1.png" width=60%>
+        <p>Sample Digit Generations, Epoch 1 Model</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.2/time_results_ep5.png" width=60%>
+        <p>Sample Digit Generations, Epoch 5 Model</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.2/time_results_ep10.png" width=60%>
+        <p>Sample Digit Generations, Epoch 10 Model</p>
+      </div>
+    </div>
+    </div>
+
+    <br>
+    <h3>2.4 & 2.5: Adding Class-Conditioning to UNet & Training the UNet</h3>
+    <p>The results of our time-conditioned model are much better than the unconditioned model, but not perfect. Additionally, we lack control over which digits we would like to generate, which is an important quality of diffusion models. In order to improve both of these aspects, we implement class conditioning for our model. Injected in addition to time conditioning, class conditioning allows us to specify a specific digit for the model to generate, which allows us to better control the output. This has the parallel benefit of further improving generation quality, since the model can learn more specific qualities of each numeral. The training losses for our class-conditional model are as follows:</p>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.5/training_loss_class_condition.png" width=60%>
+        <p>Sample Digit Generations, Epoch 1 Model</p>
+      </div>
+    </div>
+    </div>
+    <p>NOTE: While our training run from the previous part included a learning rater scheduler to improve convergence, this stage does NOT include such a scheduler. The results shared here were achieved with the following hyperparameter selections:</p>
+     <pre><code class="language-python">
+batch_size = 64
+learning_rate = 1e-2
+hidden_dim = 64
+num_epochs = 10
+  </code></pre>
+  <p>As before, we can now perform sampling in order to actually generate digit images. In this case, we instead perform CFG to perform our generations, since this allows us to fully leverage the benefits of class conditioning by biasing our results towards the desired class. Resulting generations from this final process (for model checkpoints at different epochs) can be seen as follows:</p>
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.5/class_results_ep1.png" width=60%>
+        <p>Sample Digit Generations, Epoch 1 Model</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.5/class_results_ep5.png" width=60%>
+        <p>Sample Digit Generations, Epoch 5 Model</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="comparison-pair">
+      <div class="comparison-img">
+        <img src="./assets/3.5/class_results_ep10.png" width=60%>
+        <p>Sample Digit Generations, Epoch 10 Model</p>
+      </div>
+    </div>
+    </div>
+  </section>
+  <section class="container"><h3>Thank you for checking out my website, and thank you for such an awesome class!</h3></section>
+  
+     
+
+
+  <!-- ====== Footer ====== -->
+<!--   <footer>
+    <p>© 2025 Jaimyn Drake. Built with ❤️ and lots of robotics coffee.</p>
+  </footer> -->
+
+</body>
+</html>
+<!-- ====== Boilerplate provided by ChatGPT ====== -->

@@ -184,3 +184,10 @@ footer {
   color: #aaa;
   font-size: 0.9rem;
 }
+
+img {
+  image-rendering: pixelated;
+  /* Vendor prefixes for broader support (less necessary for modern browsers): */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
